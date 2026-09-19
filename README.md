@@ -49,6 +49,23 @@ Sunucu (DNS) Durumu:   ✅ Aktif
 python kep_validator.py 12345678901@ptt.kep.tr --json
 ```
 
+### Toplu Doğrulama ve Dosyadan Okuma (Batch Mode)
+Birden fazla KEP adresini komut satırından veya metin dosyasından okuyup CSV/JSON olarak dışa aktarabilirsiniz:
+```bash
+# Çoklu adres doğrulama
+python kep_validator.py ahmet@hs01.kep.tr sirket@ptt.kep.tr
+
+# Dosyadan (her satırda bir adres) toplu doğrulama
+python kep_validator.py --file kep_listesi.txt
+
+# Sonuçları CSV dosyasına kaydetme
+python kep_validator.py --file kep_listesi.txt --output rapor.csv
+
+# Hatalı adres varsa CI/CD veya script'te hata kodu (exit 1) üretme
+python kep_validator.py 12345678901@ptt.kep.tr --strict
+```
+
+
 ```json
 {
   "address": "12345678901@ptt.kep.tr",
