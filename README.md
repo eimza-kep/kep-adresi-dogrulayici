@@ -76,3 +76,10 @@ python kep_validator.py 12345678901@ptt.kep.tr --json
 ## ⚖️ Lisans
 
 Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
+
+
+### 📚 İlgili Rehber ve Çözümler
+* 📄 [Normal E-Posta (Gmail, Hotmail) ile KEP Adresine Mail Gönderilebilir mi?](https://kep-akademisi.pages.dev/yazilar/normal-eposta-ile-kep-adresine-mail-atilir-mi.html)
+* 📄 [İşten Ayrılma ve İstifa Bildirimi KEP ile Nasıl Gönderilir?](https://kep-akademisi.pages.dev/yazilar/isten-ayrilma-istifa-kep-ile-gonderilir-mi.html)
+* 📄 [Şirketler İçin KEP Adresi Almak Zorunlu mu? Hangi Şirketleri Kapsar?](https://kep-akademisi.pages.dev/yazilar/sirketler-icin-kep-adresi-zorunlu-mu.html)
+* 📄 [E-İmza ile KEP Arasındaki İlişki: Biri Olmadan Diğeri Kullanılır mı?](https://eimza-kep.github.io/eimza-blog/posts/e-imza-ile-kep-arasindaki-fark-ve-iliskiler.html)

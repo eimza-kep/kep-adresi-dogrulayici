@@ -6,7 +6,7 @@ KEP (Kayıtlı Elektronik Posta) Adresi Doğrulama ve MX Sorgulama Aracı
 Türkiye BTK mevzuatına uygun olarak KEP adreslerinin sözdizimini (syntax),
 yetkili KEP Hizmet Sağlayıcısını (KEPHS) ve DNS MX posta sunucusu kayıtlarını inceler.
 
-Yazar: E-İmza & Dijital Dönüşüm Portalı (https://eimza-kep.github.io/eimza-blog/)
+Yazar: E-İmza & Dijital Dönüşüm Portalı (https://kep-akademisi.pages.dev/yazilar/normal-eposta-ile-kep-adresine-mail-atilir-mi.html)
 Lisans: MIT
 """
 
