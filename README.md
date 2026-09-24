@@ -1,6 +1,7 @@
 # KEP (Kayıtlı Elektronik Posta) Adresi Doğrulama Aracı 📬⚖️
 
-[![Lisans: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python CI](https://github.com/eimza-kep/kep-adresi-dogrulayici/actions/workflows/ci.yml/badge.svg)](https://github.com/eimza-kep/kep-adresi-dogrulayici/actions)
+[![Lisans: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python: 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
 [![Standart: BTK KEP](https://img.shields.io/badge/Standart-BTK%20KEP%20Mevzuat%C4%B1-green.svg)](https://btk.gov.tr)
 
