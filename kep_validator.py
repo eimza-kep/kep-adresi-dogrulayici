@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-KEP (Kayıtlı Elektronik Posta) Adresi Doğrulama ve MX Sorgulama Aracı
+KEP (Kayıtlı Elektronik Posta) Adresi Doğrulama ve MX Sorgulama Aracı v1.2
 ===================================================================
-Türkiye BTK mevzuatına uygun olarak KEP adreslerinin sözdizimini (syntax),
-yetkili KEP Hizmet Sağlayıcısını (KEPHS) ve DNS MX posta sunucusu kayıtlarını inceler.
+Türkiye BTK mevzuatına uygun olarak KEP ve UETS adreslerinin sözdizimini (syntax),
+yetkili KEP Hizmet Sağlayıcısını (KEPHS) ve DNS posta sunucusu kayıtlarını inceler.
 
-Yazar: E-İmza & Dijital Dönüşüm Portalı (https://kep-akademisi.pages.dev/yazilar/normal-eposta-ile-kep-adresine-mail-atilir-mi.html)
+Özellikler:
+- Sıfır bağımlılık (Pure Python Standard Library)
+- BTK onaylı tüm KEPHS operatör eşleşmeleri (TÜRKKEP, TN KEP, PTT KEP, E-Tuğra vb.)
+- Kurumsal alt alan adları (subdomain: örn. banka.hs02.kep.tr) desteği
+- TCKN, MERSİS ve UETS hesap tipi tespiti
+- CSV, JSON ve Markdown formatında raporlama
+- Toplu adres listesi tarama (--file) ve CI denetimi (--strict)
+
+Yazar: E-İmza & Dijital Dönüşüm Portalı (https://kep-akademisi.pages.dev/)
 Lisans: MIT
 """
 
 import sys
+import os
 import re
 import csv
 import socket
@@ -36,16 +45,32 @@ KNOWN_KEP_OPERATORS = {
     "hs06.kep.tr": "İnteraktif KEP Altyapısı",
     "hs07.kep.tr": "TÜBİTAK BİLGEM KEP",
     "hs08.kep.tr": "İpek KEP",
+    "hs09.kep.tr": "EDM Bilişim KEP Altyapısı",
 }
 
+def resolve_kephs_operator(domain):
+    """
+    Alan adını (subdomain dahil) bilinen BTK KEPHS operatörleriyle eşleştirir.
+    Örn: 'kurumsal.hs01.kep.tr' -> 'TÜRKKEP'
+    """
+    clean_dom = domain.lower().strip()
+    if clean_dom in KNOWN_KEP_OPERATORS:
+        return KNOWN_KEP_OPERATORS[clean_dom]
+    
+    for base_dom, op_name in KNOWN_KEP_OPERATORS.items():
+        if clean_dom.endswith("." + base_dom):
+            return f"{op_name} (Kurumsal Alt Alan Adı)"
+            
+    return "Yetkili Diğer KEPHS / Kurumsal KEP Alan Adı"
+
 def validate_kep_syntax(address):
-    """KEP adresi sözdizimini kontrol eder."""
+    """KEP adresi sözdizimini ve hesap tipini kontrol eder."""
     if not address or "@" not in address:
         return False, "Geçersiz e-posta biçimi (içinde '@' karakteri yok)"
 
     parts = address.strip().lower().split("@")
     if len(parts) != 2:
-        return False, "Geçersiz e-posta biçimi"
+        return False, "Geçersiz e-posta biçimi (birden fazla '@' karakteri)"
 
     local_part, domain = parts
 
@@ -57,12 +82,14 @@ def validate_kep_syntax(address):
     if not re.match(r"^[a-z0-9\._\-]+$", local_part):
         return False, "Kullanıcı adında geçersiz özel karakterler var"
 
-    # Tip tespiti
+    # Tip tespiti (Bireysel / Kurumsal / MERSİS / TCKN)
     account_type = "Tüzel Kişi / Şirket veya Kurum"
     if re.match(r"^\d{11}$", local_part):
         account_type = "Gerçek Kişi (T.C. Kimlik No İle Kayıtlı)"
     elif re.match(r"^\d{16}$", local_part):
         account_type = "Tüzel Kişi (MERSİS No İle Kayıtlı)"
+    elif re.match(r"^\d{5}-\d{5}-\d{5}$", local_part):
+        account_type = "UETS Tebligat Hesabı (Adalet Bakanlığı UETS Formatı)"
     elif re.match(r"^[a-z]+[\.][a-z0-9]+$", local_part):
         account_type = "Gerçek Kişi (Ad.Soyad Formatı)"
 
@@ -74,8 +101,19 @@ def check_mx_records(domain):
         host_info = socket.gethostbyname(domain)
         return True, [f"A Kaydı: {host_info} (Sunucu Erişilebilir)"]
     except socket.gaierror:
-        if domain in KNOWN_KEP_OPERATORS:
-            return True, ["BTK Resmi Kayıtlı KEPHS Altyapısı (Kapalı Devre / KamuNet)"]
+        # Alt alan adıysa üst domaini de deneyelim
+        parts = domain.split(".")
+        if len(parts) > 3:
+            parent_domain = ".".join(parts[-3:])
+            try:
+                p_host = socket.gethostbyname(parent_domain)
+                return True, [f"Üst Sunucu A Kaydı ({parent_domain}): {p_host}"]
+            except socket.gaierror:
+                pass
+
+        for known in KNOWN_KEP_OPERATORS:
+            if domain == known or domain.endswith("." + known):
+                return True, ["BTK Resmi Kayıtlı KEPHS Altyapısı (Kapalı Devre / KamuNet)"]
         return False, ["DNS Çözümleme Hatası: Alan adı genel internet DNS sunucularında bulunamadı"]
 
 def validate_kep_single(address):
@@ -83,7 +121,7 @@ def validate_kep_single(address):
     is_valid_syntax, type_or_err = validate_kep_syntax(clean_addr)
 
     domain = clean_addr.split("@")[1] if "@" in clean_addr else ""
-    operator_name = KNOWN_KEP_OPERATORS.get(domain, "Yetkili Diğer KEPHS / Kurumsal KEP Alan Adı")
+    operator_name = resolve_kephs_operator(domain) if domain else "-"
 
     dns_ok = False
     dns_details = []
@@ -108,9 +146,23 @@ def validate_kep_single(address):
         "dns_details": dns_details
     }
 
+def generate_markdown_report(results):
+    md = "# KEP Adresi Doğrulama Raporu\n\n"
+    md += f"Toplam **{len(results)}** adet KEP adresi analiz edildi.\n\n"
+    md += "| Durum | KEP Adresi | Hesap Türü | KEPHS Operatörü | Alan Adı |\n"
+    md += "|:---:|---|---|---|---|\n"
+    for r in results:
+        status_icon = "✅ Geçerli" if r["is_valid"] else "❌ Hatalı"
+        acc = r["account_type"] if r["syntax_valid"] else f"Hata: {r['error_message']}"
+        md += f"| {status_icon} | `{r['address']}` | {acc} | {r['operator']} | `@{r['domain']}` |\n"
+    
+    md += "\n---\n"
+    md += "💡 **Yasal Dayanak:** 6102 Sayılı Türk Ticaret Kanunu Madde 18/3 ve 7201 Sayılı Tebligat Kanunu Madde 7/a uyarınca KEP iletileri kesin hukuki delil niteliğindedir.\n"
+    return md
+
 def print_result_cli(result):
     print("=" * 80)
-    print("      KEP (KAYITLI ELEKTRONİK POSTA) DOĞRULAMA VE TEST ARACI v1.1")
+    print("      KEP (KAYITLI ELEKTRONİK POSTA) DOĞRULAMA VE TEST ARACI v1.2")
     print("=" * 80)
     print(f"Sorgulanan KEP Adresi: {result['address']}")
     print(f"Genel Durum:           {'✅ GEÇERLİ KEP ADRESİ' if result['is_valid'] else '❌ GEÇERSİZ / HATALI KEP ADRESİ'}")
@@ -131,11 +183,12 @@ def print_result_cli(result):
     print("=" * 80)
 
 def main():
-    parser = argparse.ArgumentParser(description="KEP Adresi Sözdizimi ve DNS Doğrulama Aracı")
+    parser = argparse.ArgumentParser(description="KEP Adresi Sözdizimi ve DNS Doğrulama Aracı v1.2")
     parser.add_argument("addresses", nargs="*", help="Doğrulanacak KEP adresleri (Örn: sirket@hs01.kep.tr)")
     parser.add_argument("--file", help="İçerisinde KEP adresleri bulunan metin/CSV dosyası")
     parser.add_argument("--json", action="store_true", help="Sonucu JSON olarak çıktı verir")
-    parser.add_argument("--output", help="Sonuçları JSON veya CSV dosyasına kaydeder")
+    parser.add_argument("--markdown", action="store_true", help="Sonucu Markdown tablosu olarak verir")
+    parser.add_argument("--output", help="Sonuçları JSON, CSV veya Markdown dosyasına kaydeder")
     parser.add_argument("--strict", action="store_true", help="Geçersiz adres varsa 1 çıkış kodu üretir")
 
     args = parser.parse_args()
@@ -158,9 +211,17 @@ def main():
     results = [validate_kep_single(addr) for addr in target_list]
     any_invalid = any(not r["is_valid"] for r in results)
 
-    if args.output:
+    if args.markdown:
+        md_text = generate_markdown_report(results)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(md_text)
+            print(f"[OK] Markdown raporu kaydedildi: {args.output}")
+        else:
+            print(md_text)
+    elif args.output:
         if args.output.lower().endswith(".csv"):
-            with open(args.output, "w", newline="", encoding="utf-8") as f:
+            with open(args.output, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Adres", "Gecerli", "Sozdizimi", "DNS_Aktif", "HesapTuru", "Operator", "Hata"])
                 for r in results:
@@ -189,4 +250,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
