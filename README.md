@@ -4,7 +4,7 @@
 [![Lisans: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python: 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
 [![Standart: RFC 5322 & BTK](https://img.shields.io/badge/Standart-BTK%20KEP-success.svg)](https://btk.gov.tr)
-[![Blog](https://img.shields.io/badge/Rehber-KEP%20Akademisi-blue.svg)](https://kep-akademisi.pages.dev/)
+[![Blog](https://img.shields.io/badge/Rehber-KEP%20Akademisi-blue.svg)](https://keprehberi.site/)
 
 Türkiye'de **BTK mevzuatı, 6102 Sayılı Türk Ticaret Kanunu (Madde 18/3)** ve **7201 Sayılı Tebligat Kanunu** kapsamında kullanılan KEP (Kayıtlı Elektronik Posta) ve UETS adreslerinin sözdizimini (syntax), kurumsal alt alan adlarını (subdomain), yetkili KEP Hizmet Sağlayıcısını (KEPHS) ve DNS posta sunucusu durumunu denetleyen açık kaynaklı CLI aracıdır.
 
@@ -73,9 +73,9 @@ Bu araç [eimza-kep](https://github.com/eimza-kep) organizasyonunun açık kayna
 ---
 
 ## 📚 İlgili Teknik Rehberler
-* 📄 [Normal E-Posta ile KEP Adresine Mail Gönderilir mi?](https://kep-akademisi.pages.dev/yazilar/normal-eposta-ile-kep-adresine-mail-atilir-mi.html)
-* 📄 [KEP Delil Kutusu Nedir? Delil İletilerinin Hukuki Saklama Süresi](https://kep-akademisi.pages.dev/yazilar/kep-delil-kutusu-saklama-sureleri.html)
-* 📄 [Şirketlerde KEP Adresi Zorunlu mu? Hangi Firmalar KEP Almak Zorunda?](https://kep-akademisi.pages.dev/yazilar/sirketlerde-kep-adresi-zorunlulugu.html)
+* 📄 [Normal E-Posta ile KEP Adresine Mail Gönderilir mi?](https://keprehberi.site/yazilar/normal-eposta-ile-kep-adresine-mail-atilir-mi.html)
+* 📄 [KEP Delil Kutusu Nedir? Delil İletilerinin Hukuki Saklama Süresi](https://keprehberi.site/yazilar/kep-delil-kutusu-saklama-sureleri.html)
+* 📄 [Şirketlerde KEP Adresi Zorunlu mu? Hangi Firmalar KEP Almak Zorunda?](https://keprehberi.site/yazilar/sirketlerde-kep-adresi-zorunlulugu.html)
 
 ---
 

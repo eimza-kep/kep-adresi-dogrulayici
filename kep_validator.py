@@ -14,7 +14,7 @@ yetkili KEP Hizmet Sağlayıcısını (KEPHS) ve DNS posta sunucusu kayıtların
 - CSV, JSON ve Markdown formatında raporlama
 - Toplu adres listesi tarama (--file) ve CI denetimi (--strict)
 
-Yazar: E-İmza & Dijital Dönüşüm Portalı (https://kep-akademisi.pages.dev/)
+Yazar: E-İmza & Dijital Dönüşüm Portalı (https://keprehberi.site/)
 Lisans: MIT
 """
 
