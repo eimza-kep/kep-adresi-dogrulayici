@@ -46,6 +46,8 @@ KNOWN_KEP_OPERATORS = {
     "hs07.kep.tr": "TÜBİTAK BİLGEM KEP",
     "hs08.kep.tr": "İpek KEP",
     "hs09.kep.tr": "EDM Bilişim KEP Altyapısı",
+    "hs10.kep.tr": "E-İmzaTR KEP Hizmetleri A.Ş.",
+    "tnb.kep.tr":  "TNB KEP (Türkiye Noterler Birliği)",
 }
 
 def resolve_kephs_operator(domain):
@@ -67,6 +69,9 @@ def validate_kep_syntax(address):
     """KEP adresi sözdizimini ve hesap tipini kontrol eder."""
     if not address or "@" not in address:
         return False, "Geçersiz e-posta biçimi (içinde '@' karakteri yok)"
+
+    if re.search(r"[ıçşğüöİÇŞĞÜÖ]", address):
+        return False, "KEP adreslerinde Türkçe karakter (ı, ç, ş, ğ, ü, ö) kullanılamaz; standart Latin alfabesi kullanılmalıdır"
 
     parts = address.strip().lower().split("@")
     if len(parts) != 2:
