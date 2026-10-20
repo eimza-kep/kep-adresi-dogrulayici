@@ -34,7 +34,7 @@ try:
 except Exception:
     pass
 
-# BTK Onaylı KEP Hizmet Sağlayıcıları ve Bilinen Alan Adları
+# BTK Onaylı KEP Hizmet Sağlayıcıları ve Bilinen Alan Adları (2026 Güncel)
 KNOWN_KEP_OPERATORS = {
     "hs01.kep.tr": "TÜRKKEP Kayıtlı Elektronik Posta Hizmetleri A.Ş.",
     "hs02.kep.tr": "TN KEP / TN İletişim Teknolojileri A.Ş.",
@@ -44,11 +44,28 @@ KNOWN_KEP_OPERATORS = {
     "hs05.kep.tr": "E-Tuğra EBG A.Ş. KEP Altyapısı",
     "hs06.kep.tr": "İnteraktif KEP Altyapısı",
     "hs07.kep.tr": "TÜBİTAK BİLGEM KEP",
-    "hs08.kep.tr": "İpek KEP",
+    "hs08.kep.tr": "İpek KEP / KEP A.Ş.",
     "hs09.kep.tr": "EDM Bilişim KEP Altyapısı",
     "hs10.kep.tr": "E-İmzaTR KEP Hizmetleri A.Ş.",
     "tnb.kep.tr":  "TNB KEP (Türkiye Noterler Birliği)",
+    "turkkep.com.tr": "TÜRKKEP Kayıtlı Elektronik Posta Hizmetleri A.Ş.",
+    "kepas.com.tr": "KEP A.Ş. Hizmet Sağlayıcısı",
 }
+
+def validate_tckn_algorithm(tckn_str):
+    """TCKN 11 hane kural ve algoritma denetimi."""
+    if not re.match(r"^[1-9]\d{10}$", tckn_str):
+        return False
+    digits = [int(d) for d in tckn_str]
+    d_odd = sum(digits[0:9:2])
+    d_even = sum(digits[1:8:2])
+    tenth = ((d_odd * 7) - d_even) % 10
+    if digits[9] != tenth:
+        return False
+    eleventh = sum(digits[:10]) % 10
+    if digits[10] != eleventh:
+        return False
+    return True
 
 def resolve_kephs_operator(domain):
     """
@@ -87,12 +104,17 @@ def validate_kep_syntax(address):
     if not re.match(r"^[a-z0-9\._\-]+$", local_part):
         return False, "Kullanıcı adında geçersiz özel karakterler var"
 
-    # Tip tespiti (Bireysel / Kurumsal / MERSİS / TCKN)
+    # Tip tespiti (VKN / TCKN / MERSİS / UETS / Bireysel)
     account_type = "Tüzel Kişi / Şirket veya Kurum"
-    if re.match(r"^\d{11}$", local_part):
-        account_type = "Gerçek Kişi (T.C. Kimlik No İle Kayıtlı)"
+    if re.match(r"^\d{10}$", local_part):
+        account_type = "Tüzel Kişi (Vergi Kimlik No - VKN İle Kayıtlı)"
+    elif re.match(r"^\d{11}$", local_part):
+        if validate_tckn_algorithm(local_part):
+            account_type = "Gerçek Kişi (T.C. Kimlik No İle Doğrulanmış)"
+        else:
+            account_type = "Gerçek Kişi (T.C. Kimlik No İle Kayıtlı)"
     elif re.match(r"^\d{16}$", local_part):
-        account_type = "Tüzel Kişi (MERSİS No İle Kayıtlı)"
+        account_type = "Tüzel Kişi (16 Haneli MERSİS No İle Kayıtlı)"
     elif re.match(r"^\d{5}-\d{5}-\d{5}$", local_part):
         account_type = "UETS Tebligat Hesabı (Adalet Bakanlığı UETS Formatı)"
     elif re.match(r"^[a-z]+[\.][a-z0-9]+$", local_part):
@@ -100,11 +122,28 @@ def validate_kep_syntax(address):
 
     return True, account_type
 
-def check_mx_records(domain):
-    """Domain için DNS sunucu kayıtlarını kontrol eder."""
+def check_smtp_connectivity(domain, timeout=1.5):
+    """Domain için SMTP (port 25 / 587) bağlantı sağlığını test eder."""
+    for port in (25, 587):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((domain, port))
+            sock.close()
+            return True, f"Port {port} SMTP bağlantısı açık"
+        except (socket.timeout, socket.error, OSError):
+            continue
+    return False, "SMTP portlarına doğrudan erişim kapalı veya korumalı"
+
+def check_mx_records(domain, check_smtp=False):
+    """Domain için DNS sunucu kayıtlarını ve isteğe bağlı SMTP bağlantısını kontrol eder."""
     try:
         host_info = socket.gethostbyname(domain)
-        return True, [f"A Kaydı: {host_info} (Sunucu Erişilebilir)"]
+        details = [f"A Kaydı: {host_info} (Sunucu Erişilebilir)"]
+        if check_smtp:
+            s_ok, s_msg = check_smtp_connectivity(domain)
+            details.append(s_msg)
+        return True, details
     except socket.gaierror:
         # Alt alan adıysa üst domaini de deneyelim
         parts = domain.split(".")
@@ -121,7 +160,7 @@ def check_mx_records(domain):
                 return True, ["BTK Resmi Kayıtlı KEPHS Altyapısı (Kapalı Devre / KamuNet)"]
         return False, ["DNS Çözümleme Hatası: Alan adı genel internet DNS sunucularında bulunamadı"]
 
-def validate_kep_single(address):
+def validate_kep_single(address, check_smtp=False):
     clean_addr = address.strip().lower()
     is_valid_syntax, type_or_err = validate_kep_syntax(clean_addr)
 
@@ -133,7 +172,7 @@ def validate_kep_single(address):
     error_msg = None
 
     if is_valid_syntax and domain:
-        dns_ok, dns_details = check_mx_records(domain)
+        dns_ok, dns_details = check_mx_records(domain, check_smtp=check_smtp)
         if not dns_ok:
             error_msg = f"Alan adı DNS/A kaydı çözümlenemedi ({dns_details[0] if dns_details else 'Bilinmiyor'})"
     elif not is_valid_syntax:
@@ -195,6 +234,7 @@ def main():
     parser.add_argument("--markdown", action="store_true", help="Sonucu Markdown tablosu olarak verir")
     parser.add_argument("--output", help="Sonuçları JSON, CSV veya Markdown dosyasına kaydeder")
     parser.add_argument("--strict", action="store_true", help="Geçersiz adres varsa 1 çıkış kodu üretir")
+    parser.add_argument("--check-smtp", action="store_true", help="Sunucu SMTP bağlantı sağlığını test eder")
 
     args = parser.parse_args()
 
@@ -213,7 +253,7 @@ def main():
         parser.print_help()
         sys.exit(0)
 
-    results = [validate_kep_single(addr) for addr in target_list]
+    results = [validate_kep_single(addr, check_smtp=args.check_smtp) for addr in target_list]
     any_invalid = any(not r["is_valid"] for r in results)
 
     if args.markdown:
