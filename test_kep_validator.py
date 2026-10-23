@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Unit tests for KEP Address Validator v1.2"""
+"""Unit tests for KEP Address Validator v1.3"""
+import os
 import unittest
 from kep_validator import (
     validate_kep_syntax,
@@ -7,7 +8,9 @@ from kep_validator import (
     resolve_kephs_operator,
     generate_markdown_report,
     validate_tckn_algorithm,
-    check_smtp_connectivity
+    check_smtp_connectivity,
+    check_doh_records,
+    process_excel_file
 )
 
 class TestKEPValidator(unittest.TestCase):
@@ -56,11 +59,8 @@ class TestKEPValidator(unittest.TestCase):
     def test_tckn_algorithm(self):
         # 10000000146 satisfies TCKN checksum algorithm
         self.assertTrue(validate_tckn_algorithm("10000000146"))
-        # Invalid checksum
         self.assertFalse(validate_tckn_algorithm("10000000147"))
-        # Leading zero is invalid
         self.assertFalse(validate_tckn_algorithm("01234567890"))
-        # Non-11 digit
         self.assertFalse(validate_tckn_algorithm("12345"))
 
         valid_algo, algo_type = validate_kep_syntax("10000000146@hs01.kep.tr")
@@ -91,6 +91,47 @@ class TestKEPValidator(unittest.TestCase):
         self.assertTrue(res_ptt["syntax_valid"])
         self.assertEqual(res_ptt["domain"], "ptt.kep.tr")
         self.assertIn("PTT", res_ptt["operator"])
+
+    def test_doh_resolution(self):
+        # Test DoH resolution with Cloudflare/Google DNS
+        doh_ok, doh_details = check_doh_records("hs01.kep.tr")
+        self.assertTrue(doh_ok)
+        self.assertTrue(len(doh_details) > 0)
+        self.assertTrue(any("Kaydı" in d or "Altyapısı" in d for d in doh_details))
+
+        # Test single validation using DoH flag
+        res_doh = validate_kep_single("sirket@hs01.kep.tr", use_doh=True)
+        self.assertTrue(res_doh["is_valid"])
+        self.assertTrue(res_doh["dns_active"])
+
+    def test_excel_processing(self):
+        try:
+            import openpyxl
+        except ImportError:
+            self.skipTest("openpyxl kurulu değil")
+
+        test_excel = os.path.join(os.path.dirname(__file__), "temp_test_list.xlsx")
+        out_excel = os.path.join(os.path.dirname(__file__), "temp_test_out.xlsx")
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.append(["Calisan_Adi", "KEP_Adresi"])
+            ws.append(["Ali Yilmaz", "ali.yilmaz@hs01.kep.tr"])
+            ws.append(["Gecersiz Kisi", "hatali-adres@gmail.com"])
+            wb.save(test_excel)
+
+            res = process_excel_file(test_excel, col_name="KEP_Adresi", output_path=out_excel)
+            self.assertEqual(res["total_rows"], 2)
+            self.assertEqual(res["processed_keps"], 2)
+            self.assertTrue(os.path.exists(out_excel))
+
+            # Verify first address is valid
+            self.assertTrue(res["results"][0]["is_valid"])
+            # Verify second address is invalid
+            self.assertFalse(res["results"][1]["is_valid"])
+        finally:
+            for p in [test_excel, out_excel]:
+                if os.path.exists(p): os.remove(p)
 
     def test_markdown_report_generation(self):
         res_list = [validate_kep_single("test@hs01.kep.tr")]
